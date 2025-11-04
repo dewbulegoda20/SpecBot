@@ -65,31 +65,6 @@ export default function Home() {
     }
   }, [currentConversation, loadMessages, setMessages]);
 
-  const loadConversations = async () => {
-    try {
-      const response = await fetch('/api/conversations');
-      const data = await response.json();
-      setConversations(data.conversations);
-    } catch (error) {
-      console.error('Error loading conversations:', error);
-      setError('Failed to load conversations');
-    }
-  };
-
-  const loadMessages = async (conversationId: string) => {
-    try {
-      setLoading(true);
-      const response = await fetch(`/api/conversations/${conversationId}/messages`);
-      const data = await response.json();
-      setMessages(data.messages);
-    } catch (error) {
-      console.error('Error loading messages:', error);
-      setError('Failed to load messages');
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const handleUpload = async (file: File) => {
     try {
       setLoading(true);
