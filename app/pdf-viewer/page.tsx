@@ -1,9 +1,9 @@
 'use client';
 
 import { useSearchParams } from 'next/navigation';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, Suspense } from 'react';
 
-export default function PDFViewerPage() {
+function PDFViewerContent() {
   const searchParams = useSearchParams();
   const pdfUrl = searchParams.get('file');
   const initialPage = parseInt(searchParams.get('page') || '1');
@@ -74,5 +74,13 @@ export default function PDFViewerPage() {
         Page {currentPage} of {numPages}
       </div>
     </div>
+  );
+}
+
+export default function PDFViewerPage() {
+  return (
+    <Suspense fallback={<div style={{ width: '100%', height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#525252', color: 'white' }}>Loading PDF...</div>}>
+      <PDFViewerContent />
+    </Suspense>
   );
 }
