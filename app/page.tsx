@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Header from '@/components/Header';
 import Sidebar from '@/components/Sidebar';
 import ChatArea from '@/components/ChatArea';
@@ -26,7 +26,7 @@ export default function Home() {
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
 
-  const loadConversations = async () => {
+  const loadConversations = useCallback(async () => {
     try {
       const response = await fetch('/api/conversations');
       const data = await response.json();
@@ -35,9 +35,9 @@ export default function Home() {
       console.error('Error loading conversations:', error);
       setError('Failed to load conversations');
     }
-  };
+  }, [setConversations, setError]);
 
-  const loadMessages = async (conversationId: string) => {
+  const loadMessages = useCallback(async (conversationId: string) => {
     try {
       setLoading(true);
       const response = await fetch(`/api/conversations/${conversationId}/messages`);
@@ -49,7 +49,7 @@ export default function Home() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [setLoading, setMessages, setError]);
 
   // Load conversations on mount
   useEffect(() => {
