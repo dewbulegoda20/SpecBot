@@ -1,0 +1,19 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --primary: #137fec;
+  --background-light: #ffffff;
+  --background-dark: #101922;
+}
+
+body {
+  font-family: 'Manrope', sans-serif;
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+}
