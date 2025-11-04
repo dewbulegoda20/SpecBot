@@ -94,8 +94,18 @@ export async function POST(request: NextRequest) {
     }
   } catch (error) {
     console.error('Upload error:', error);
+    
+    // Log more details about the error
+    if (error instanceof Error) {
+      console.error('Error message:', error.message);
+      console.error('Error stack:', error.stack);
+    }
+    
     return NextResponse.json(
-      { error: 'Failed to upload and process document' },
+      { 
+        error: 'Failed to upload and process document',
+        details: error instanceof Error ? error.message : 'Unknown error'
+      },
       { status: 500 }
     );
   }

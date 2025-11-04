@@ -2,7 +2,8 @@ import fs from 'fs/promises';
 import path from 'path';
 import { randomBytes } from 'crypto';
 
-export const UPLOAD_DIR = process.env.UPLOAD_DIR || './uploads';
+// Use /tmp on Vercel (serverless), otherwise use ./uploads locally
+export const UPLOAD_DIR = process.env.VERCEL ? '/tmp/uploads' : (process.env.UPLOAD_DIR || './uploads');
 export const MAX_FILE_SIZE = parseInt(process.env.MAX_FILE_SIZE || '10485760'); // 10MB default
 
 export async function ensureUploadDir() {
