@@ -56,7 +56,7 @@ export default function ChatArea({ onSendMessage, onReferenceClick }: ChatAreaPr
                   </p>
                 </div>
                 <p className="text-gray-800 dark:text-gray-300 text-base font-normal leading-normal">
-                  Welcome! Upload an electrical specification to get started. You can ask questions like 'What is the required voltage for circuit X?'
+                  Welcome! Upload an electrical specification to get started. You can ask questions like &apos;What is the required voltage for circuit X?&apos;
                 </p>
               </div>
             </div>
