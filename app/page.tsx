@@ -29,10 +29,18 @@ export default function Home() {
   const loadConversations = useCallback(async () => {
     try {
       const response = await fetch('/api/conversations');
+      
+      if (!response.ok) {
+        console.error('Failed to load conversations:', response.status);
+        setConversations([]);
+        return;
+      }
+      
       const data = await response.json();
-      setConversations(data.conversations);
+      setConversations(data.conversations || []);
     } catch (error) {
       console.error('Error loading conversations:', error);
+      setConversations([]);
       setError('Failed to load conversations');
     }
   }, [setConversations, setError]);
@@ -41,10 +49,18 @@ export default function Home() {
     try {
       setLoading(true);
       const response = await fetch(`/api/conversations/${conversationId}/messages`);
+      
+      if (!response.ok) {
+        console.error('Failed to load messages:', response.status);
+        setMessages([]);
+        return;
+      }
+      
       const data = await response.json();
-      setMessages(data.messages);
+      setMessages(data.messages || []);
     } catch (error) {
       console.error('Error loading messages:', error);
+      setMessages([]);
       setError('Failed to load messages');
     } finally {
       setLoading(false);
