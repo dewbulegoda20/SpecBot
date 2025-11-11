@@ -73,6 +73,15 @@ export async function uploadChunksToPinecone(
         readingOrder: chunk.readingOrder,
       };
 
+      // Log first few chunks to verify page numbers
+      if (idx < 3) {
+        console.log(`🔍 Preparing chunk ${idx} for Pinecone:`, {
+          id: chunk.id,
+          pageNumber: chunk.pageNumber,
+          textPreview: chunk.text.substring(0, 50),
+        });
+      }
+
       // Only add optional fields if they have values
       if (chunk.boundingBox) {
         metadata.boundingBox = JSON.stringify(chunk.boundingBox);

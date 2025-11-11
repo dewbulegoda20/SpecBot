@@ -52,7 +52,10 @@ export async function POST(request: Request) {
       console.log('Processing PDF with Azure Document Intelligence...');
       const { chunks: extractedChunks, totalPages } = await processPDFWithAzure(buffer);
       
-      console.log(`Extracted ${extractedChunks.length} chunks from ${totalPages} pages`);
+      console.log(`✅ AZURE EXTRACTION COMPLETE: ${extractedChunks.length} chunks from ${totalPages} pages`);
+      console.log('📄 First 5 chunks page numbers:', extractedChunks.slice(0, 5).map((c, i) => `[${i}] Page ${c.pageNumber}`));
+      console.log('📄 Last 5 chunks page numbers:', extractedChunks.slice(-5).map((c, i) => `[${extractedChunks.length - 5 + i}] Page ${c.pageNumber}`));
+      
       console.log('First chunk sample:', {
         text: extractedChunks[0]?.text.substring(0, 100),
         pageNumber: extractedChunks[0]?.pageNumber,
