@@ -145,6 +145,13 @@ function extractChunksFromResult(result: AnalyzeResult): ExtractedChunk[] {
         return bbox?.pageNumber === pageNumber;
       });
 
+      for (const table of pageTables) {
+        const chunk = createTableChunk(table, pageNumber, readingOrder++);
+        if (chunk) chunks.push(chunk);
+      }
+    }
+  }
+
   console.log(`Extracted ${chunks.length} chunks from ${result.pages.length} pages`);
   
   // Log page distribution
@@ -154,13 +161,6 @@ function extractChunksFromResult(result: AnalyzeResult): ExtractedChunk[] {
   }, {} as Record<number, number>);
   console.log('Chunks per page:', pageDistribution);
   
-  return chunks;unk = createTableChunk(table, pageNumber, readingOrder++);
-        if (chunk) chunks.push(chunk);
-      }
-    }
-  }
-
-  console.log(`Extracted ${chunks.length} chunks from ${result.pages.length} pages`);
   return chunks;
 }
 
