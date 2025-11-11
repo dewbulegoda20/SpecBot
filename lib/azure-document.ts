@@ -63,13 +63,13 @@ export async function processPDFWithAzure(
   try {
     console.log('Starting Azure Document Intelligence analysis...');
 
+    // Convert Buffer to Uint8Array for Azure SDK compatibility
+    const uint8Array = new Uint8Array(fileBuffer);
+
     // Analyze document with prebuilt-layout model
     const poller = await client.beginAnalyzeDocument(
       'prebuilt-layout',
-      fileBuffer,
-      {
-        features: ['keyValuePairs'],
-      }
+      uint8Array
     );
 
     const result = await poller.pollUntilDone();
