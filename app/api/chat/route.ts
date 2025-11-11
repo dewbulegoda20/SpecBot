@@ -172,9 +172,16 @@ export async function POST(request: NextRequest) {
       },
     });
 
+    // Transform Prisma's Reference to lowercase references for frontend
+    const transformedMessage = {
+      ...completeMessage,
+      references: completeMessage?.Reference, // Map Reference -> references
+      Reference: undefined, // Remove capital R version
+    };
+
     return NextResponse.json({
       success: true,
-      message: completeMessage,
+      message: transformedMessage,
     });
   } catch (error) {
     console.error('Chat error:', error);

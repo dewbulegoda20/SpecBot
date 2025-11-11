@@ -30,7 +30,14 @@ export async function GET(
       }
     });
 
-    return NextResponse.json({ messages });
+    // Transform Prisma's Reference to lowercase references for frontend
+    const transformedMessages = messages.map(msg => ({
+      ...msg,
+      references: msg.Reference, // Map Reference -> references
+      Reference: undefined, // Remove capital R version
+    }));
+
+    return NextResponse.json({ messages: transformedMessages });
   } catch (error) {
     console.error('Error fetching messages:', error);
     return NextResponse.json(
