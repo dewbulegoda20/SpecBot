@@ -23,13 +23,13 @@ export async function GET(request: NextRequest) {
     const conversations = await prisma.conversation.findMany({
       where: whereClause,
       include: {
-        document: {
+        Document: {
           select: {
             id: true,
             filename: true,
           },
         },
-        messages: {
+        Message: {
           select: {
             id: true,
           },

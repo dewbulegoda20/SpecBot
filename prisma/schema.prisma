@@ -1,78 +1,78 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "postgresql"  // Changed to PostgreSQL for Vercel compatibility
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
+model Conversation {
+  id         String    @id @default(cuid())
+  documentId String
+  title      String
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  Document   Document  @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  Message    Message[]
+
+  @@index([createdAt])
+  @@index([documentId])
+}
+
 model Document {
-  id          String   @id @default(cuid())
-  filename    String
-  filepath    String
-  filesize    Int
-  uploadedAt  DateTime @default(now())
-  
-  conversations Conversation[]
-  chunks        DocumentChunk[]
+  id            String          @id @default(cuid())
+  filename      String
+  filepath      String
+  filesize      Int
+  uploadedAt    DateTime        @default(now())
+  Conversation  Conversation[]
+  DocumentChunk DocumentChunk[]
 }
 
 model DocumentChunk {
-  id          String   @id @default(cuid())
-  documentId  String
-  content     String
-  pageNumber  Int
-  chunkIndex  Int
-  embedding   String?  // Store as JSON string
-  
-  document    Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
-  references  Reference[]
-  
-  @@index([documentId])
-}
+  id           String      @id @default(cuid())
+  documentId   String
+  content      String
+  pageNumber   Int
+  chunkIndex   Int
+  boundingBox  String?
+  chunkType    String      @default("paragraph")
+  heading      String?
+  pineconeId   String?
+  readingOrder Int         @default(0)
+  tableData    String?
+  Document     Document    @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  Reference    Reference[]
 
-model Conversation {
-  id          String   @id @default(cuid())
-  documentId  String
-  title       String
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  
-  document    Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
-  messages    Message[]
-  
   @@index([documentId])
-  @@index([createdAt])
+  @@index([pineconeId])
 }
 
 model Message {
-  id              String   @id @default(cuid())
-  conversationId  String
-  role            String   // 'user' or 'assistant'
-  content         String
-  createdAt       DateTime @default(now())
-  
-  conversation    Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
-  references      Reference[]
-  
+  id             String       @id @default(cuid())
+  conversationId String
+  role           String
+  content        String
+  createdAt      DateTime     @default(now())
+  Conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  Reference      Reference[]
+
   @@index([conversationId])
 }
 
 model Reference {
-  id            String   @id @default(cuid())
+  id            String        @id @default(cuid())
   messageId     String
   chunkId       String
   pageNumber    Int
   text          String
   relevance     Float
-  citationIndex Int      // Which [X] citation number this reference corresponds to
-  
-  message     Message @relation(fields: [messageId], references: [id], onDelete: Cascade)
-  chunk       DocumentChunk @relation(fields: [chunkId], references: [id], onDelete: Cascade)
-  
+  citationIndex Int
+  boundingBox   String?
+  chunkType     String?
+  DocumentChunk DocumentChunk @relation(fields: [chunkId], references: [id], onDelete: Cascade)
+  Message       Message       @relation(fields: [messageId], references: [id], onDelete: Cascade)
+
   @@index([messageId])
 }

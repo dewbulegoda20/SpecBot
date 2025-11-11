@@ -6,12 +6,14 @@
     "dev": "next dev",
     "build": "prisma db push --accept-data-loss && next build",
     "start": "next start",
-    "lint": "next lint",
-    "postinstall": "prisma generate"
+    "lint": "next lint"
   },
   "dependencies": {
+    "@azure/ai-form-recognizer": "^5.0.0",
+    "@pinecone-database/pinecone": "^3.0.0",
     "@prisma/client": "^5.20.0",
     "date-fns": "^4.1.0",
+    "dotenv": "^17.2.3",
     "lucide-react": "^0.454.0",
     "next": "14.2.15",
     "openai": "^4.67.3",

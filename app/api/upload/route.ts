@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { saveUploadedFile, validateFileType, validateFileSize } from '@/lib/upload';
-import { processAndChunkPDF } from '@/lib/pdf';
+import { processPDFWithAzure } from '@/lib/azure-document';
 import { generateEmbeddings } from '@/lib/openai';
+import { uploadChunksToPinecone } from '@/lib/pinecone-client';
 
 export async function POST(request: NextRequest) {
   try {
@@ -48,25 +49,68 @@ export async function POST(request: NextRequest) {
     // Process PDF in background (chunks and embeddings)
     // We'll do this synchronously for now, but in production you'd want to use a job queue
     try {
-      const chunks = await processAndChunkPDF(filepath);
+      console.log('Processing PDF with Azure Document Intelligence...');
+      const { chunks: extractedChunks, totalPages } = await processPDFWithAzure(buffer);
       
+      console.log(`Extracted ${extractedChunks.length} chunks from ${totalPages} pages`);
+
       // Generate embeddings in batches
       const batchSize = 20;
-      for (let i = 0; i < chunks.length; i += batchSize) {
-        const batch = chunks.slice(i, i + batchSize);
-        const embeddings = await generateEmbeddings(batch.map(c => c.content));
+      const chunksWithEmbeddings: Array<{
+        id: string;
+        embedding: number[];
+        text: string;
+        pageNumber: number;
+        chunkType: 'paragraph' | 'table' | 'heading' | 'list';
+        readingOrder: number;
+        boundingBox?: number[];
+        tableData?: any;
+        heading?: any;
+      }> = [];
+
+      for (let i = 0; i < extractedChunks.length; i += batchSize) {
+        const batch = extractedChunks.slice(i, i + batchSize);
+        const embeddings = await generateEmbeddings(batch.map(c => c.text));
         
-        // Save chunks with embeddings
-        await prisma.documentChunk.createMany({
-          data: batch.map((chunk, idx) => ({
-            documentId: document.id,
-            content: chunk.content,
+        batch.forEach((chunk, idx) => {
+          const chunkId = `${document.id}-chunk-${i + idx}`;
+          chunksWithEmbeddings.push({
+            id: chunkId,
+            embedding: embeddings[idx],
+            text: chunk.text,
             pageNumber: chunk.pageNumber,
-            chunkIndex: chunk.chunkIndex,
-            embedding: JSON.stringify(embeddings[idx]),
-          })),
+            chunkType: chunk.chunkType,
+            readingOrder: chunk.readingOrder,
+            boundingBox: chunk.boundingBox,
+            tableData: chunk.metadata.tableData,
+            heading: chunk.metadata.heading,
+          });
         });
+
+        console.log(`Generated embeddings for batch ${Math.floor(i / batchSize) + 1}/${Math.ceil(extractedChunks.length / batchSize)}`);
       }
+
+      // Upload to Pinecone
+      console.log('Uploading chunks to Pinecone...');
+      await uploadChunksToPinecone(document.id, chunksWithEmbeddings);
+
+      // Save chunks to database (without embeddings, since they're in Pinecone)
+      await prisma.documentChunk.createMany({
+        data: extractedChunks.map((chunk, idx) => ({
+          documentId: document.id,
+          content: chunk.text,
+          pageNumber: chunk.pageNumber,
+          chunkIndex: idx,
+          chunkType: chunk.chunkType,
+          readingOrder: chunk.readingOrder,
+          boundingBox: chunk.boundingBox ? JSON.stringify(chunk.boundingBox) : null,
+          tableData: chunk.metadata.tableData ? JSON.stringify(chunk.metadata.tableData) : null,
+          heading: chunk.metadata.heading ? JSON.stringify(chunk.metadata.heading) : null,
+          pineconeId: `${document.id}-chunk-${idx}`,
+        })),
+      });
+
+      console.log('PDF processing complete!');
 
       // Create initial conversation
       const conversation = await prisma.conversation.create({
@@ -82,6 +126,8 @@ export async function POST(request: NextRequest) {
           id: document.id,
           filename: document.filename,
           uploadedAt: document.uploadedAt,
+          totalPages,
+          totalChunks: extractedChunks.length,
         },
         conversation: {
           id: conversation.id,

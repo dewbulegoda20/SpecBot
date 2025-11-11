@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { generateEmbedding, cosineSimilarity, chatWithReferences } from '@/lib/openai';
+import { generateEmbedding, chatWithReferences } from '@/lib/openai';
+import { searchWithContext } from '@/lib/pinecone-client';
 
 export async function POST(request: NextRequest) {
   try {
@@ -17,8 +18,8 @@ export async function POST(request: NextRequest) {
     const conversation = await prisma.conversation.findUnique({
       where: { id: conversationId },
       include: {
-        document: true,
-        messages: {
+        Document: true,
+        Message: {
           orderBy: { createdAt: 'asc' },
           take: 10, // Get last 10 messages for context
         },
@@ -44,30 +45,65 @@ export async function POST(request: NextRequest) {
     // Generate embedding for the question
     const questionEmbedding = await generateEmbedding(question);
 
-    // Get all document chunks with embeddings
-    const chunks = await prisma.documentChunk.findMany({
-      where: { documentId: conversation.document.id },
+    // Search Pinecone for relevant chunks (with context expansion)
+    console.log('Searching Pinecone for relevant chunks...');
+    const searchResults = await searchWithContext(
+      conversation.Document.id,
+      questionEmbedding,
+      3, // Top 3 matches
+      1  // ±1 surrounding chunks for context
+    );
+
+    console.log(`Found ${searchResults.length} relevant chunks (with context)`);
+
+    // Get full chunk details from database
+    const chunkIds = searchResults.map(r => {
+      const docId = r.metadata.documentId as string;
+      const chunkIdx = r.metadata.chunkIndex as number;
+      return `${docId}-chunk-${chunkIdx}`;
+    });
+    const dbChunks = await prisma.documentChunk.findMany({
+      where: {
+        pineconeId: { in: chunkIds },
+      },
     });
 
-    // Calculate similarity and find top relevant chunks
-    const chunksWithSimilarity = chunks
-      .map(chunk => {
-        const chunkEmbedding = JSON.parse(chunk.embedding || '[]');
-        const similarity = cosineSimilarity(questionEmbedding, chunkEmbedding);
-        return { ...chunk, similarity };
-      })
-      .sort((a, b) => b.similarity - a.similarity)
-      .slice(0, 5); // Top 5 most relevant chunks
+    // Create a map for quick lookup
+    const chunkMap = new Map(dbChunks.map(chunk => [chunk.pineconeId, chunk]));
 
-    // Prepare context for AI
-    const context = chunksWithSimilarity.map(chunk => ({
-      content: chunk.content,
-      pageNumber: chunk.pageNumber,
-      chunkId: chunk.id,
-    }));
+    // Prepare context for AI with enhanced metadata
+    const context = searchResults
+      .map(result => {
+        const docId = result.metadata.documentId as string;
+        const chunkIdx = result.metadata.chunkIndex as number;
+        const dbChunk = chunkMap.get(`${docId}-chunk-${chunkIdx}`);
+        if (!dbChunk) return null;
+
+        const text = result.metadata.text as string;
+        const pageNum = result.metadata.pageNumber as number;
+        const chunkTypeStr = result.metadata.chunkType as string;
+        const tableDataStr = result.metadata.tableData as string | undefined;
+
+        return {
+          content: text,
+          pageNumber: pageNum,
+          chunkId: dbChunk.id,
+          chunkType: chunkTypeStr,
+          score: result.score,
+          tableData: tableDataStr ? JSON.parse(tableDataStr) : undefined,
+        };
+      })
+      .filter(Boolean) as Array<{
+      content: string;
+      pageNumber: number;
+      chunkId: string;
+      chunkType: string;
+      score: number;
+      tableData?: any;
+    }>;
 
     // Get conversation history for context
-    const conversationHistory = conversation.messages.map(msg => ({
+    const conversationHistory = conversation.Message.map((msg) => ({
       role: msg.role as 'user' | 'assistant',
       content: msg.content,
     }));
@@ -93,26 +129,38 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    // Save references
+    // Save references with enhanced metadata
     if (references.length > 0) {
+      const referencesWithMetadata = await Promise.all(
+        references.map(async (ref, index) => {
+          const dbChunk = await prisma.documentChunk.findUnique({
+            where: { id: ref.chunkId },
+          });
+
+          return {
+            messageId: assistantMessage.id,
+            chunkId: ref.chunkId,
+            pageNumber: ref.pageNumber,
+            text: ref.text,
+            relevance: ref.relevance,
+            citationIndex: index + 1,
+            boundingBox: dbChunk?.boundingBox || null,
+            chunkType: dbChunk?.chunkType || null,
+          };
+        })
+      );
+
       await prisma.reference.createMany({
-        data: references.map((ref, index) => ({
-          messageId: assistantMessage.id,
-          chunkId: ref.chunkId,
-          pageNumber: ref.pageNumber,
-          text: ref.text,
-          relevance: ref.relevance,
-          citationIndex: index + 1, // Citation number is 1-indexed
-        })),
+        data: referencesWithMetadata,
       });
     }
 
     // Update conversation title if it's the first message
-    if (conversation.messages.length === 0) {
+    if (conversation.Message.length === 0) {
       const title = question.substring(0, 50) + (question.length > 50 ? '...' : '');
       await prisma.conversation.update({
         where: { id: conversationId },
-        data: { title },
+        data: { title, updatedAt: new Date() },
       });
     }
 
@@ -120,7 +168,7 @@ export async function POST(request: NextRequest) {
     const completeMessage = await prisma.message.findUnique({
       where: { id: assistantMessage.id },
       include: {
-        references: true,
+        Reference: true,
       },
     });
 

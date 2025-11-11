@@ -11,7 +11,7 @@ export async function GET(
         conversationId: params.id,
       },
       include: {
-        references: {
+        Reference: {
           orderBy: {
             pageNumber: 'asc', // Order by page number instead of relevance
           },
@@ -24,9 +24,9 @@ export async function GET(
 
     console.log(`Loaded ${messages.length} messages`);
     messages.forEach(msg => {
-      if (msg.references && msg.references.length > 0) {
-        console.log(`Message ${msg.id} has ${msg.references.length} references:`, 
-          msg.references.map(r => `Page ${r.pageNumber}`));
+      if (msg.Reference && msg.Reference.length > 0) {
+        console.log(`Message ${msg.id} has ${msg.Reference.length} references:`, 
+          msg.Reference.map(r => `Page ${r.pageNumber}`));
       }
     });
 
