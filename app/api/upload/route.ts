@@ -7,6 +7,16 @@ import { uploadChunksToPinecone } from '@/lib/pinecone-client';
 
 export async function POST(request: NextRequest) {
   try {
+    // Log environment variables status (without exposing actual values)
+    console.log('Environment check:', {
+      hasAzureEndpoint: !!process.env.AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT,
+      hasAzureKey: !!process.env.AZURE_DOCUMENT_INTELLIGENCE_KEY,
+      hasPineconeKey: !!process.env.PINECONE_API_KEY,
+      hasPineconeIndex: !!process.env.PINECONE_INDEX_NAME,
+      hasOpenAI: !!process.env.OPENAI_API_KEY,
+      hasDatabase: !!process.env.DATABASE_URL,
+    });
+
     const formData = await request.formData();
     const file = formData.get('file') as File;
 
@@ -143,14 +153,17 @@ export async function POST(request: NextRequest) {
     
     // Log more details about the error
     if (error instanceof Error) {
+      console.error('Error name:', error.name);
       console.error('Error message:', error.message);
       console.error('Error stack:', error.stack);
     }
     
+    // Return detailed error for debugging
     return NextResponse.json(
       { 
         error: 'Failed to upload and process document',
-        details: error instanceof Error ? error.message : 'Unknown error'
+        message: error instanceof Error ? error.message : 'Unknown error',
+        type: error instanceof Error ? error.name : typeof error,
       },
       { status: 500 }
     );

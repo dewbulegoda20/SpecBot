@@ -74,7 +74,10 @@ export default function UploadModal({ isOpen, onClose, onUpload }: UploadModalPr
       setSelectedFile(null);
       onClose();
     } catch (err) {
-      setError('Failed to upload file. Please try again.');
+      // Display the actual error message from the API
+      const errorMessage = err instanceof Error ? err.message : 'Failed to upload file. Please try again.';
+      setError(errorMessage);
+      console.error('Upload error details:', err);
     } finally {
       setIsUploading(false);
     }

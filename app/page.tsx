@@ -93,7 +93,10 @@ export default function Home() {
       });
 
       if (!response.ok) {
-        throw new Error('Upload failed');
+        // Parse error response to get detailed error message
+        const errorData = await response.json().catch(() => ({}));
+        const errorMessage = errorData.message || errorData.error || 'Upload failed';
+        throw new Error(errorMessage);
       }
 
       const data = await response.json();
@@ -108,7 +111,7 @@ export default function Home() {
       setError(null);
     } catch (error) {
       console.error('Upload error:', error);
-      setError('Failed to upload document');
+      setError(error instanceof Error ? error.message : 'Failed to upload document');
       throw error;
     } finally {
       setLoading(false);
