@@ -33,6 +33,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    console.log('🔍 CHAT REQUEST:', {
+      conversationId,
+      documentId: conversation.documentId,
+      documentName: conversation.Document.filename,
+      question: question.substring(0, 100),
+    });
+
     // Save user message
     const userMessage = await prisma.message.create({
       data: {
