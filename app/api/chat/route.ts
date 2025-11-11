@@ -46,12 +46,13 @@ export async function POST(request: NextRequest) {
     const questionEmbedding = await generateEmbedding(question);
 
     // Search Pinecone for relevant chunks (with context expansion)
+    // Increase to 8 top matches for comprehensive answers
     console.log('Searching Pinecone for relevant chunks...');
     const searchResults = await searchWithContext(
       conversation.Document.id,
       questionEmbedding,
-      3, // Top 3 matches
-      1  // ±1 surrounding chunks for context
+      8, // Top 8 matches (increased from 3 for better coverage)
+      2  // ±2 surrounding chunks for context (increased from 1)
     );
 
     console.log(`Found ${searchResults.length} relevant chunks (with context)`);
