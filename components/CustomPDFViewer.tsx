@@ -72,7 +72,7 @@ export default function CustomPDFViewer({ onUploadClick }: CustomPDFViewerProps)
     loadPDF();
   }, [currentDocument, pdfjsLib]);
 
-  // Render current page
+  // Render current page with bounding box highlighting
   useEffect(() => {
     if (!pdfDoc || !canvasRef.current || rendering) return;
 
@@ -101,6 +101,72 @@ export default function CustomPDFViewer({ onUploadClick }: CustomPDFViewerProps)
 
         await page.render(renderContext).promise;
         console.log('Rendered page', currentPage, 'at scale', scale);
+
+        // Draw bounding box highlight if reference is on this page
+        if (highlightedReference && 
+            highlightedReference.pageNumber === currentPage && 
+            highlightedReference.boundingBox) {
+          
+          try {
+            const boundingBox = typeof highlightedReference.boundingBox === 'string' 
+              ? JSON.parse(highlightedReference.boundingBox)
+              : highlightedReference.boundingBox;
+
+            if (Array.isArray(boundingBox) && boundingBox.length >= 8) {
+              // Azure returns [x1, y1, x2, y2, x3, y3, x4, y4] in PDF coordinates
+              // PDF.js uses bottom-left origin, Azure uses top-left
+              const pageHeight = viewport.height / scale;
+              
+              // Convert Azure coordinates to viewport coordinates
+              const x1 = boundingBox[0] * scale;
+              const y1 = (pageHeight - boundingBox[1]) * scale;
+              const x2 = boundingBox[2] * scale;
+              const y2 = (pageHeight - boundingBox[3]) * scale;
+              const x3 = boundingBox[4] * scale;
+              const y3 = (pageHeight - boundingBox[5]) * scale;
+              const x4 = boundingBox[6] * scale;
+              const y4 = (pageHeight - boundingBox[7]) * scale;
+
+              // Calculate rectangle bounds
+              const minX = Math.min(x1, x2, x3, x4);
+              const minY = Math.min(y1, y2, y3, y4);
+              const maxX = Math.max(x1, x2, x3, x4);
+              const maxY = Math.max(y1, y2, y3, y4);
+              const width = maxX - minX;
+              const height = maxY - minY;
+
+              // Draw semi-transparent yellow highlight
+              context.fillStyle = 'rgba(255, 235, 59, 0.3)'; // Yellow with 30% opacity
+              context.fillRect(minX, minY, width, height);
+
+              // Draw dashed border (like Adobe Acrobat)
+              context.strokeStyle = '#F57C00'; // Orange border
+              context.lineWidth = 2;
+              context.setLineDash([5, 3]); // Dashed line pattern
+              context.strokeRect(minX, minY, width, height);
+              context.setLineDash([]); // Reset line dash
+
+              console.log('Drew bounding box highlight:', {
+                page: currentPage,
+                coords: { minX, minY, width, height },
+                originalBoundingBox: boundingBox
+              });
+
+              // Scroll to the highlighted area
+              if (containerRef.current) {
+                const scrollTop = Math.max(0, minY - 100); // Scroll with 100px padding
+                containerRef.current.scrollTo({
+                  top: scrollTop,
+                  behavior: 'smooth'
+                });
+              }
+            } else {
+              console.warn('Invalid bounding box format:', boundingBox);
+            }
+          } catch (err) {
+            console.error('Error drawing bounding box:', err);
+          }
+        }
       } catch (err) {
         console.error('Error rendering page:', err);
         setError(`Failed to render page ${currentPage}`);
@@ -110,7 +176,7 @@ export default function CustomPDFViewer({ onUploadClick }: CustomPDFViewerProps)
     };
 
     renderPage();
-  }, [pdfDoc, currentPage, scale, rendering]);
+  }, [pdfDoc, currentPage, scale, rendering, highlightedReference]);
 
   // Handle reference navigation
   useEffect(() => {

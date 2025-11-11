@@ -7,6 +7,8 @@ export interface Reference {
   pageNumber: number;
   text: string;
   relevance: number;
+  boundingBox?: string | number[]; // Add boundingBox field
+  chunkType?: string;
 }
 
 export interface Message {
