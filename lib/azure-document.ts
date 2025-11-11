@@ -69,8 +69,14 @@ export async function processPDFWithAzure(
     // Analyze document with prebuilt-layout model
     const poller = await client.beginAnalyzeDocument(
       'prebuilt-layout',
-      uint8Array
+      uint8Array,
+      {
+        // Ensure all pages are processed
+        pages: undefined, // undefined means process ALL pages (default)
+      }
     );
+
+    console.log('Azure analysis started, waiting for completion...');
 
     const result = await poller.pollUntilDone();
 
@@ -79,6 +85,13 @@ export async function processPDFWithAzure(
     }
 
     console.log(`Analysis complete. Processing ${result.pages?.length || 0} pages...`);
+    
+    // Log detailed page information
+    if (result.pages) {
+      console.log('Azure returned pages:', result.pages.map(p => p.pageNumber));
+      console.log('Total paragraphs across all pages:', result.paragraphs?.length || 0);
+      console.log('Total tables across all pages:', result.tables?.length || 0);
+    }
 
     // Extract chunks
     const chunks = extractChunksFromResult(result);
@@ -132,8 +145,16 @@ function extractChunksFromResult(result: AnalyzeResult): ExtractedChunk[] {
         return bbox?.pageNumber === pageNumber;
       });
 
-      for (const table of pageTables) {
-        const chunk = createTableChunk(table, pageNumber, readingOrder++);
+  console.log(`Extracted ${chunks.length} chunks from ${result.pages.length} pages`);
+  
+  // Log page distribution
+  const pageDistribution = chunks.reduce((acc, chunk) => {
+    acc[chunk.pageNumber] = (acc[chunk.pageNumber] || 0) + 1;
+    return acc;
+  }, {} as Record<number, number>);
+  console.log('Chunks per page:', pageDistribution);
+  
+  return chunks;unk = createTableChunk(table, pageNumber, readingOrder++);
         if (chunk) chunks.push(chunk);
       }
     }

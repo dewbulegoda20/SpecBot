@@ -53,6 +53,14 @@ export async function POST(request: Request) {
       const { chunks: extractedChunks, totalPages } = await processPDFWithAzure(buffer);
       
       console.log(`Extracted ${extractedChunks.length} chunks from ${totalPages} pages`);
+      console.log('First chunk sample:', {
+        text: extractedChunks[0]?.text.substring(0, 100),
+        pageNumber: extractedChunks[0]?.pageNumber,
+        boundingBox: extractedChunks[0]?.boundingBox,
+        boundingBoxType: typeof extractedChunks[0]?.boundingBox,
+        boundingBoxIsArray: Array.isArray(extractedChunks[0]?.boundingBox),
+        boundingBoxLength: extractedChunks[0]?.boundingBox?.length,
+      });
 
       // Generate embeddings in batches
       const batchSize = 20;
@@ -93,6 +101,12 @@ export async function POST(request: Request) {
       // Upload to Pinecone
       console.log('Uploading chunks to Pinecone...');
       await uploadChunksToPinecone(document.id, chunksWithEmbeddings);
+
+      // Log what we're about to save to database
+      console.log('Saving to database - first chunk boundingBox:', {
+        raw: extractedChunks[0]?.boundingBox,
+        stringified: extractedChunks[0]?.boundingBox ? JSON.stringify(extractedChunks[0].boundingBox) : null,
+      });
 
       // Save chunks to database (without embeddings, since they're in Pinecone)
       await prisma.documentChunk.createMany({
