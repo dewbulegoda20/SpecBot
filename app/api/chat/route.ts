@@ -138,6 +138,14 @@ export async function POST(request: NextRequest) {
             where: { id: ref.chunkId },
           });
 
+          console.log(`Reference [${index + 1}] chunk data:`, {
+            chunkId: ref.chunkId,
+            pageNumber: ref.pageNumber,
+            hasBoundingBox: !!dbChunk?.boundingBox,
+            boundingBoxLength: dbChunk?.boundingBox?.length || 0,
+            chunkType: dbChunk?.chunkType,
+          });
+
           return {
             messageId: assistantMessage.id,
             chunkId: ref.chunkId,
@@ -154,6 +162,10 @@ export async function POST(request: NextRequest) {
       await prisma.reference.createMany({
         data: referencesWithMetadata,
       });
+      
+      console.log(`Created ${referencesWithMetadata.length} references with bounding boxes:`,
+        referencesWithMetadata.map(r => ({ citation: r.citationIndex, hasBBox: !!r.boundingBox }))
+      );
     }
 
     // Update conversation title if it's the first message

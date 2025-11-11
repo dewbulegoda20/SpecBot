@@ -25,15 +25,17 @@ export async function GET(
     console.log(`Loaded ${messages.length} messages`);
     messages.forEach(msg => {
       if (msg.Reference && msg.Reference.length > 0) {
-        console.log(`Message ${msg.id} has ${msg.Reference.length} references:`, 
-          msg.Reference.map(r => `Page ${r.pageNumber}`));
+        console.log(`Message ${msg.id} has ${msg.Reference.length} references:`);
+        msg.Reference.forEach((ref, idx) => {
+          console.log(`  [${idx}] Page ${ref.pageNumber}, BoundingBox: ${ref.boundingBox ? 'YES' : 'NO'}, Type: ${ref.chunkType}`);
+        });
       }
     });
 
     // Transform Prisma's Reference to lowercase references for frontend
     const transformedMessages = messages.map(msg => ({
       ...msg,
-      references: msg.Reference, // Map Reference -> references
+      references: msg.Reference, // Map Reference -> references (includes all fields like boundingBox)
       Reference: undefined, // Remove capital R version
     }));
 

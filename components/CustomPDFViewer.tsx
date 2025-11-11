@@ -103,6 +103,17 @@ export default function CustomPDFViewer({ onUploadClick }: CustomPDFViewerProps)
         console.log('Rendered page', currentPage, 'at scale', scale);
 
         // Draw bounding box highlight if reference is on this page
+        if (highlightedReference) {
+          console.log('Highlighted reference data:', {
+            pageNumber: highlightedReference.pageNumber,
+            currentPage,
+            hasBoundingBox: !!highlightedReference.boundingBox,
+            boundingBoxType: typeof highlightedReference.boundingBox,
+            boundingBoxValue: highlightedReference.boundingBox,
+            chunkId: highlightedReference.chunkId,
+          });
+        }
+
         if (highlightedReference && 
             highlightedReference.pageNumber === currentPage && 
             highlightedReference.boundingBox) {
