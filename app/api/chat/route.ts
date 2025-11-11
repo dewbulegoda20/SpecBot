@@ -63,6 +63,12 @@ export async function POST(request: NextRequest) {
     );
 
     console.log(`Found ${searchResults.length} relevant chunks (with context)`);
+    
+    // Log what Pinecone returned
+    console.log('📊 Pinecone search results:');
+    searchResults.slice(0, 5).forEach((result, idx) => {
+      console.log(`  [${idx}] Page ${result.metadata.pageNumber}, Score: ${result.score.toFixed(3)}, Text: "${(result.metadata.text as string).substring(0, 60)}..."`);
+    });
 
     // Get full chunk details from database
     const chunkIds = searchResults.map(r => {
